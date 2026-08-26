@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Coin Catcher</title>
+
+<style>
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    background: #10152b;
+    color: white;
+    font-family: Arial, sans-serif;
+    text-align: center;
+    overflow: hidden;
+}
+
+h1 {
+    margin: 15px 0 5px;
+}
+
+#info {
+    display: flex;
+    justify-content: center;
+    gap: 25px;
+    font-size: 18px;
+    margin: 10px;
+}
+
+#game {
+    position: relative;
+    width: min(95vw, 600px);
+    height: 70vh;
+    max-height: 650px;
+    margin: auto;
+    border: 3px solid white;
+    border-radius: 15px;
+    overflow: hidden;
+    background: linear-gradient(#18204a, #07101d);
+}
+
+#player {
+    position: absolute;
+    bottom: 20px;
+    left: 50%;
+    width: 60px;
+    height: 60px;
+    background: #28d7ff;
+    border-radius: 15px;
+    transform: translateX(-50%);
+    box-shadow: 0 0 20px #28d7ff;
+}
+
+.coin {
+    position: absolute;
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    background: gold;
+    border: 3px solid #fff09a;
+    box-shadow: 0 0 15px gold;
+}
+
+.enemy {
+    position: absolute;
+    width: 35px;
+    height: 35px;
+    background: #ff3b3b;
+    border-radius: 50%;
+    box-shadow: 0 0 15px red;
+}
+
+#menu {
+    position: absolute;
+    inset: 0;
+    background: rgba(0,0,0,.85);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    gap: 15px;
+    z-index: 10;
+}
+
+button {
+    border: none;
+    padding: 14px 30px;
+    border-radius: 12px;
+    font-size: 18px;
+    font-weight: bold;
+    cursor: pointer;
+    background: #28d7ff;
+}
+
+button:active {
+    transform: scale(.95);
+}
+
+#controls {
+    margin-top: 15px;
+}
+
+.control {
+    width: 100px;
+    margin: 5px;
+    background: #333b6b;
+    color: white;
+}
+</style>
+</head>
+
+<body>
+
+<h1>🪙 Coin Catcher</h1>
+
+<div id="info">
+    <div>⭐ Score: <span id="score">0</span></div>
+    <div>❤️ Lives: <span id="lives">3</span></div>
+    <div>🏆 Level: <span id="level">1</span></div>
+</div>
+
+<div id="game">
+
+    <div id="menu">
+        <h2 id="title">🪙 COIN CATCHER</h2>
+        <p id="message">Catch coins and avoid enemies!</p>
+        <button onclick="startGame()">START GAME</button>
+    </div>
+
+    <div id="player"></div>
+
+</div>
+
+<div id="controls">
+    <button class="control" onmousedown="moveLeft()" ontouchstart="moveLeft()">⬅ LEFT</button>
+    <button class="control" onmousedown="moveRight()" ontouchstart="moveRight()">RIGHT ➡</button>
+</div>
+
+<script>
+
+const game = document.getElementById("game");
+const player = document.getElementById("player");
+
+const scoreText = document.getElementById("score");
+const livesText = document.getElementById("lives");
+const levelText = document.getElementById("level");
+
+const menu = document.getElementById("menu");
+const title = document.getElementById("title");
+const message = document.getElementById("message");
+
+let score = 0;
+let lives = 3;
+let level = 1;
+
+let playerX = 50;
+
+let gameRunning = false;
+
+let objects = [];
+
+let spawnTimer;
+let difficultyTimer;
+
+function startGame() {
+
+    score = 0;
+    lives = 3;
+    level = 1;
+
+    playerX = 50;
+
+    scoreText.textContent = score;
+    livesText.textContent = lives;
+    levelText.textContent = level;
+
+    player.style.left = playerX + "%";
+
+    objects.forEach(o => o.element.remove());
+    objects = [];
+
+    menu.style.display = "none";
+
+    gameRunning = true;
+
+    spawnTimer = setInterval(spawnObject, 800);
+
+    difficultyTimer = setInterval(() => {
+
+        level++;
+
+        levelText.textContent = level;
+
+    }, 10000);
+
+    requestAnimationFrame(gameLoop);
+}
+
+function spawnObject() {
+
+    if (!gameRunning) return;
+
+    const isEnemy = Math.random() < 0.25;
+
+    const element = document.createElement("div");
+
+    element.className = isEnemy ? "enemy" : "coin";
+
+    const x = Math.random() * 90;
+
+    element.style.left = x + "%";
+    element.style.top = "-40px";
+
+    game.appendChild(element);
+
+    objects.push({
+        element: element,
+        x: x,
+        y: -40,
+        speed: 2 + level * 0.5,
+        enemy: isEnemy
+    });
+}
+
+function gameLoop() {
+
+    if (!gameRunning) return;
+
+    const gameHeight = game.clientHeight;
+
+    const playerRect = player.getBoundingClientRect();
+
+    objects.forEach((obj, index) => {
+
+        obj.y += obj.speed;
+
+        obj.element.style.top = obj.y + "px";
+
+        const objectRect = obj.element.getBoundingClientRect();
+
+        if (collision(playerRect, objectRect)) {
+
+            if (obj.enemy) {
+
+                loseLife();
+
+            } else {
+
+                score += 10;
+
+                scoreText.textContent = score;
+
+            }
+
+            obj.element.remove();
+            objects.splice(index, 1);
+
+        }
+
+        if (obj.y > gameHeight) {
+
+            obj.element.remove();
+            objects.splice(index, 1);
+
+        }
+
+    });
+
+    requestAnimationFrame(gameLoop);
+}
+
+function collision(a, b) {
+
+    return !(
+        a.right < b.left ||
+        a.left > b.right ||
+        a.bottom < b.top ||
+        a.top > b.bottom
+    );
+}
+
+function loseLife() {
+
+    lives--;
+
+    livesText.textContent = lives;
+
+    if (lives <= 0) {
+
+        endGame();
+
+    }
+}
+
+function endGame() {
+
+    gameRunning = false;
+
+    clearInterval(spawnTimer);
+    clearInterval(difficultyTimer);
+
+    objects.forEach(o => o.element.remove());
+
+    objects = [];
+
+    title.textContent = "💥 GAME OVER";
+
+    message.textContent =
+        "Your score: " + score;
+
+    menu.style.display = "flex";
+}
+
+function moveLeft() {
+
+    if (!gameRunning) return;
+
+    playerX -= 7;
+
+    if (player X < 5)
+        player X = 5;
+
+    player. style . left =  player X + "%";
+}
+
+function move Right 
+
+() {
+
+    if (!game Running) return;
+
+    playerX += 7;
+
+    if (playerX > 95)
+        playerX = 95;
+
+    player.style.left = playerX + "%";
+}
+
+document.addEventListener("keydown", function(event) {
+
+    if (event.key === "ArrowLeft") {
+        moveLeft();
+    }
+
+    if (event.key === "ArrowRight") {
+        moveRight();
+    }
+
+});
+
+</script>
+
+</body>
+</html>
